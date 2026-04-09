@@ -19,5 +19,11 @@ env/
 # OS files
 .DS_Store
 Thumbs.db
+
+# Environment variables with secrets
+.env
+.env.local
+*.env
+
 # Backup of previous nested repo metadata
 eyes/.git_nested_backup/

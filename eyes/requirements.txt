@@ -1,0 +1,12 @@
+pygame>=2.5
+livekit-agents>=1.0
+livekit-plugins-openai
+livekit-plugins-deepgram
+livekit-plugins-silero
+python-dotenv
+numpy
+Pillow
+adafruit-circuitpython-rgb-display
+adafruit-blinka
+spidev
+rpi.gpio
