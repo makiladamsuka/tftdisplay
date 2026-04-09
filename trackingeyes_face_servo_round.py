@@ -122,7 +122,7 @@ EMOTION_PRESETS = {
     "sad": {"scale_w": 0.98, "scale_h": 1.08, "top_lid": 0.20, "bottom_lid": 0.0, "lid_angle": 10.0, "mirror_angle": True},
     "angry": {"scale_w": 1.02, "scale_h": 0.90, "top_lid": 0.24, "bottom_lid": 0.0, "lid_angle": -14.0, "mirror_angle": True},
     "surprised": {"scale_w": 0.98, "scale_h": 1.12, "top_lid": 0.0, "bottom_lid": 0.0, "lid_angle": 0.0, "mirror_angle": True},
-    "suspicious": {"scale_w": 1.06, "scale_h": 0.74, "top_lid": 0.30, "bottom_lid": 0.30, "lid_angle": 0.0, "mirror_angle": True},
+    "suspicious": {"scale_w": 1.06, "scale_h": 0.74, "top_lid": 0.38, "bottom_lid": 0.35, "lid_angle": 0.0, "mirror_angle": True},
     "sleepy": {"scale_w": 1.04, "scale_h": 0.88, "top_lid": 0.56, "bottom_lid": 0.0, "lid_angle": 0.0, "mirror_angle": True},
     "looking_left_natural": {"scale_w": 1.02, "scale_h": 0.98, "top_lid": 0.0, "bottom_lid": 0.05, "lid_angle": -3.0, "mirror_angle": False},
     "looking_right_natural": {"scale_w": 1.02, "scale_h": 0.98, "top_lid": 0.0, "bottom_lid": 0.05, "lid_angle": 3.0, "mirror_angle": False},
