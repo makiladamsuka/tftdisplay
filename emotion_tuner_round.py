@@ -19,6 +19,20 @@ Keys:
   a = calm
   s = curious
   d = afraid
+    t = thinking
+    c = concentrating
+    r = remembering
+    i = attentive
+    e = engaged
+    m = amused
+    w = warm
+    y = curious intense
+    n = nod pulse
+    o = awkward
+    u = uncertain
+    p = apologetic
+    x = proud
+    l = playful
   [ / ] = decrease/increase intensity
   b = trigger blink
   q = quit
@@ -71,9 +85,39 @@ EMOTION_PRESETS = {
     "looking_left_happy": {"scale_w": 1.10, "scale_h": 0.84, "top_lid": 0.0, "bottom_lid": 0.30, "lid_angle": -6.0, "mirror_angle": False},
     "looking_right_happy": {"scale_w": 1.10, "scale_h": 0.84, "top_lid": 0.0, "bottom_lid": 0.30, "lid_angle": 6.0, "mirror_angle": False},
     "excited": {"scale_w": 1.14, "scale_h": 0.80, "top_lid": 0.0, "bottom_lid": 0.24, "lid_angle": 0.0, "mirror_angle": True},
-    "calm": {"scale_w": 1.02, "scale_h": 0.95, "top_lid": 0.10, "bottom_lid": 0.08, "lid_angle": 0.0, "mirror_angle": True},
-    "curious": {"scale_w": 1.00, "scale_h": 1.04, "top_lid": 0.0, "bottom_lid": 0.38, "lid_angle": 10.0, "mirror_angle": False},
-    "afraid": {"scale_w": 0.86, "scale_h": 1.24, "top_lid": 0.0, "bottom_lid": 0.0, "lid_angle": 0.0, "mirror_angle": True},
+    "calm": {"scale_w": 1.03, "scale_h": 0.90, "top_lid": 0.16, "bottom_lid": 0.12, "lid_angle": 0.0, "mirror_angle": True},
+    "curious": {"scale_w": 1.02, "scale_h": 1.03, "top_lid": 0.0, "bottom_lid": 0.13, "lid_angle": 4.0, "mirror_angle": False},
+    "afraid": {"scale_w": 0.92, "scale_h": 1.12, "top_lid": 0.0, "bottom_lid": 0.0, "lid_angle": 0.0, "mirror_angle": True},
+    "thinking": {
+        "scale_w": 1.00, "scale_h": 0.92, "top_lid": 0.06, "bottom_lid": 0.02, "lid_angle": 0.0,
+        "mirror_angle": True, "pos": (0, -6), "behavior": "asym",
+        "left_bias": {"top_lid": 0.08, "scale_h": -0.04, "pos_y": 2.0},
+        "right_bias": {"top_lid": 0.02, "scale_h": -0.01, "pos_y": -2.0},
+    },
+    "concentrating": {"scale_w": 0.96, "scale_h": 0.84, "top_lid": 0.16, "bottom_lid": 0.08, "lid_angle": 0.0, "mirror_angle": True, "pos": (0, -2)},
+    "remembering": {"scale_w": 1.04, "scale_h": 1.03, "top_lid": 0.02, "bottom_lid": 0.0, "lid_angle": 0.0, "mirror_angle": True, "pos": (0, -6)},
+    "attentive": {"scale_w": 1.08, "scale_h": 1.06, "top_lid": 0.0, "bottom_lid": 0.0, "lid_angle": 0.0, "mirror_angle": True},
+    "engaged": {"scale_w": 1.02, "scale_h": 1.00, "top_lid": 0.04, "bottom_lid": 0.06, "lid_angle": 5.0, "mirror_angle": True},
+    "amused": {
+        "scale_w": 1.00, "scale_h": 0.98, "top_lid": 0.0, "bottom_lid": 0.14, "lid_angle": 3.0,
+        "mirror_angle": False, "left_bias": {"bottom_lid": 0.09, "lid_angle": 4.0}, "right_bias": {"bottom_lid": 0.02, "lid_angle": -2.0}
+    },
+    "warm": {"scale_w": 1.06, "scale_h": 1.00, "top_lid": 0.0, "bottom_lid": 0.16, "lid_angle": 2.0, "mirror_angle": True, "pos": (0, -4)},
+    "curious_intense": {
+        "scale_w": 1.04, "scale_h": 1.05, "top_lid": 0.0, "bottom_lid": 0.06, "lid_angle": 8.0,
+        "mirror_angle": False, "pos": (0, -4), "left_bias": {"top_lid": 0.08, "pos_x": -3.0}, "right_bias": {"top_lid": 0.01, "pos_x": 3.0}
+    },
+    "awkward": {"scale_w": 0.96, "scale_h": 0.93, "top_lid": 0.10, "bottom_lid": 0.10, "lid_angle": 0.0, "mirror_angle": True, "pos": (0, 8)},
+    "uncertain": {
+        "scale_w": 0.98, "scale_h": 0.96, "top_lid": 0.08, "bottom_lid": 0.04, "lid_angle": 0.0,
+        "mirror_angle": True, "pos": (0, -2), "left_bias": {"top_lid": 0.08, "pos_x": -4.0}, "right_bias": {"top_lid": 0.02, "pos_x": 4.0}
+    },
+    "apologetic": {"scale_w": 0.95, "scale_h": 0.92, "top_lid": 0.14, "bottom_lid": 0.04, "lid_angle": 6.0, "mirror_angle": True, "pos": (2, 10)},
+    "proud": {"scale_w": 1.06, "scale_h": 1.02, "top_lid": 0.0, "bottom_lid": 0.0, "lid_angle": -2.0, "mirror_angle": True, "pos": (0, -8)},
+    "playful": {
+        "scale_w": 1.02, "scale_h": 1.00, "top_lid": 0.0, "bottom_lid": 0.06, "lid_angle": 0.0,
+        "mirror_angle": False, "left_bias": {"scale_w": 0.10, "lid_angle": 6.0}, "right_bias": {"scale_w": -0.06, "lid_angle": -6.0}
+    },
 }
 
 KEY_TO_EMOTION = {
@@ -92,6 +136,19 @@ KEY_TO_EMOTION = {
     "a": "calm",
     "s": "curious",
     "d": "afraid",
+    "t": "thinking",
+    "c": "concentrating",
+    "r": "remembering",
+    "i": "attentive",
+    "e": "engaged",
+    "m": "amused",
+    "w": "warm",
+    "y": "curious_intense",
+    "o": "awkward",
+    "u": "uncertain",
+    "p": "apologetic",
+    "x": "proud",
+    "l": "playful",
 }
 
 
@@ -155,7 +212,21 @@ class RoundEye:
         self.happy_burst_until = 0.0
         self.surprise_shock_until = 0.0
         self.look_entry_until = 0.0
+        self.release_bounce_active = False
+        self.release_bounce_start = 0.0
+        self.release_bounce_duration = 0.24
+        self.release_bounce_frequency = 3.2
+        self.release_bounce_decay = 14.0
+        self.release_bounce_strength = 0.028
         self.noise_t = random.uniform(0.0, 100.0)
+        self.emotion_pos_bias_x = 0.0
+        self.emotion_pos_bias_y = 0.0
+        self.nod_pulse_until = 0.0
+        self.nod_pulse_freq = 8.5
+        self.nod_pulse_strength = 0.045
+
+    def trigger_nod(self, duration: float = 0.24):
+        self.nod_pulse_until = time.time() + max(0.06, duration)
 
     def start_blink(self, speed_mult=None):
         if self.blink_state == "IDLE":
@@ -171,6 +242,7 @@ class RoundEye:
             return
 
         now = time.time()
+        previous_emotion = self.current_emotion
         if (
             emotion_name != self.current_emotion
             and not force
@@ -185,6 +257,11 @@ class RoundEye:
             self.happy_burst_until = time.time() + 0.35
         if emotion_name == "surprised" and self.current_emotion != "surprised":
             self.surprise_shock_until = time.time() + 0.18
+        if previous_emotion == "sleepy" and emotion_name == "surprised":
+            self.release_bounce_active = True
+            self.release_bounce_start = now
+        else:
+            self.release_bounce_active = False
         if emotion_name.startswith("looking_") and self.current_emotion != emotion_name:
             self.look_entry_until = time.time() + 0.16
 
@@ -195,7 +272,11 @@ class RoundEye:
         preset = EMOTION_PRESETS[emotion_name]
         idle = EMOTION_PRESETS["idle"]
 
+        side_bias = preset.get("left_bias", {}) if self.is_left else preset.get("right_bias", {})
+
         intensity = max(0.0, min(1.0, intensity))
+        self.emotion_pos_bias_x = side_bias.get("pos_x", 0.0) * intensity
+        self.emotion_pos_bias_y = side_bias.get("pos_y", 0.0) * intensity
         self.target_scale_w = idle["scale_w"] + (preset["scale_w"] - idle["scale_w"]) * intensity
         self.target_scale_h = idle["scale_h"] + (preset["scale_h"] - idle["scale_h"]) * intensity
         self.target_top_lid = idle["top_lid"] + (preset["top_lid"] - idle["top_lid"]) * intensity
@@ -204,6 +285,12 @@ class RoundEye:
         lid_angle = idle["lid_angle"] + (preset["lid_angle"] - idle["lid_angle"]) * intensity
         if preset.get("mirror_angle", True) and not self.is_left and abs(lid_angle) > 0:
             lid_angle = -lid_angle
+        if side_bias:
+            self.target_scale_w += side_bias.get("scale_w", 0.0) * intensity
+            self.target_scale_h += side_bias.get("scale_h", 0.0) * intensity
+            self.target_top_lid += side_bias.get("top_lid", 0.0) * intensity
+            self.target_bottom_lid += side_bias.get("bottom_lid", 0.0) * intensity
+            lid_angle += side_bias.get("lid_angle", 0.0) * intensity
         self.target_lid_angle = lid_angle
 
     def update(self):
@@ -225,6 +312,8 @@ class RoundEye:
             top_lid_target = self.target_top_lid
             bottom_lid_target = self.target_bottom_lid
             lid_angle_target = self.target_lid_angle
+            scale_w_target = self.target_scale_w
+            scale_h_target = self.target_scale_h
 
             burst_active = time.time() < self.happy_burst_until
             if burst_active:
@@ -238,6 +327,10 @@ class RoundEye:
                 target_x_phys -= LOOK_SIDE_OFFSET
             elif self.current_emotion.startswith("looking_") and "right" in self.current_emotion:
                 target_x_phys += LOOK_SIDE_OFFSET
+
+            emotion_offset = EMOTION_PRESETS[self.current_emotion].get("pos", (0, 0))
+            target_x_phys += emotion_offset[0] + self.emotion_pos_bias_x
+            target_y_phys += emotion_offset[1] + self.emotion_pos_bias_y
 
             look_entry_active = self.current_emotion.startswith("looking_") and now < self.look_entry_until
             if look_entry_active:
@@ -291,6 +384,28 @@ class RoundEye:
                     move_stretch_x *= 0.45
                     move_stretch_y *= 0.45
 
+            if self.current_emotion == "attentive":
+                scale_w_target = max(scale_w_target, 1.04)
+                scale_h_target = max(scale_h_target, 1.03)
+            elif self.current_emotion == "engaged":
+                scale_w_target = max(scale_w_target, 1.02)
+            elif self.current_emotion == "thinking":
+                move_stretch_y -= 0.8
+            elif self.current_emotion == "remembering":
+                move_stretch_y -= 1.5
+                move_stretch_x += math.sin(now * 1.2) * 0.8
+            elif self.current_emotion == "curious_intense":
+                move_stretch_x += math.sin(now * 1.1) * 0.9
+                move_stretch_y -= 1.0
+            elif self.current_emotion == "playful":
+                move_stretch_x += math.sin(now * 2.5 + self.happy_phase) * 0.9
+
+            if now < self.nod_pulse_until:
+                pulse = 0.5 + 0.5 * math.sin(now * self.nod_pulse_freq * math.tau)
+                scale_w_target += pulse * self.nod_pulse_strength
+                scale_h_target += pulse * (self.nod_pulse_strength * 0.70)
+                move_stretch_y += math.sin(now * self.nod_pulse_freq * math.tau) * 2.2
+
             k = 0.12
             d = 0.70
             if self.current_emotion == "surprised":
@@ -301,8 +416,8 @@ class RoundEye:
                     k = 0.20
                     d = 0.72
 
-            self.scale_w_vel = (self.scale_w_vel + (self.target_scale_w - self.scale_w) * k) * d
-            self.scale_h_vel = (self.scale_h_vel + (self.target_scale_h - self.scale_h) * k) * d
+            self.scale_w_vel = (self.scale_w_vel + (scale_w_target - self.scale_w) * k) * d
+            self.scale_h_vel = (self.scale_h_vel + (scale_h_target - self.scale_h) * k) * d
             self.scale_w += self.scale_w_vel
             self.scale_h += self.scale_h_vel
 
@@ -313,6 +428,15 @@ class RoundEye:
             self.top_lid += self.top_lid_vel
             self.bottom_lid += self.bottom_lid_vel
             self.lid_angle += self.lid_angle_vel
+
+            if self.release_bounce_active:
+                elapsed = now - self.release_bounce_start
+                if elapsed <= self.release_bounce_duration:
+                    bounce = math.exp(-self.release_bounce_decay * elapsed) * math.sin(math.tau * self.release_bounce_frequency * elapsed + math.pi / 2)
+                    self.top_lid = max(0.0, min(0.9, self.top_lid - bounce * self.release_bounce_strength))
+                    self.current_pos[1] -= bounce * 0.35
+                else:
+                    self.release_bounce_active = False
 
             self.target_w = (self.base_w * self.scale_w) + breath_w + (move_stretch_x * 0.5)
             self.target_h = (self.base_h * self.scale_h) + breath_h - (move_stretch_y * 0.2)
@@ -504,7 +628,7 @@ def main():
     right_eye.set_emotion(current_emotion, intensity)
 
     print("\nRound Emotion Tuner Ready")
-    print("Keys: 0-9 + a/s/d/f/g emotions, [ ] intensity, b blink, q quit")
+    print("Keys: 0-9 + a/s/d/f/g and t/c/r/i/e/m/w/y/o/u/p/x/l emotions, n nod pulse, [ ] intensity, b blink, q quit")
 
     old_settings = termios.tcgetattr(sys.stdin)
     tty.setcbreak(sys.stdin.fileno())
@@ -538,6 +662,10 @@ def main():
                     blink_speed = random.uniform(BLINK_SPEED_MIN, BLINK_SPEED_MAX)
                     left_eye.start_blink(blink_speed)
                     right_eye.start_blink(blink_speed)
+                elif key == "n":
+                    left_eye.trigger_nod()
+                    right_eye.trigger_nod()
+                    print("Nod pulse triggered")
 
             left_eye.update()
             right_eye.update()

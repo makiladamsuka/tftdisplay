@@ -80,6 +80,9 @@ EYE_MOVE_FOOTPRINT_X = 0.34
 EYE_MOVE_FOOTPRINT_Y = 0.36
 EYE_RENDER_PAD_X = 4.0
 EYE_RENDER_PAD_Y = 6.0
+# Allow slightly more motion than the final visible render clamp so the eyes
+# still drift naturally without ever drawing outside the panel.
+EYE_MOTION_CLAMP_SCALE = 0.82
 
 # Blink Speed (Higher = Faster)
 BLINK_SPEED_MIN = 2.4
@@ -128,6 +131,20 @@ EMOTION_PRESETS = {
     "looking_right_natural": {"scale_w": 1.02, "scale_h": 0.98, "top_lid": 0.0, "bottom_lid": 0.05, "lid_angle": 3.0, "mirror_angle": False},
     "looking_left_happy": {"scale_w": 1.10, "scale_h": 0.84, "top_lid": 0.0, "bottom_lid": 0.30, "lid_angle": -6.0, "mirror_angle": False},
     "looking_right_happy": {"scale_w": 1.10, "scale_h": 0.84, "top_lid": 0.0, "bottom_lid": 0.30, "lid_angle": 6.0, "mirror_angle": False},
+    "thinking": {"scale_w": 1.00, "scale_h": 0.92, "top_lid": 0.06, "bottom_lid": 0.02, "lid_angle": 0.0, "mirror_angle": True},
+    "concentrating": {"scale_w": 0.96, "scale_h": 0.84, "top_lid": 0.16, "bottom_lid": 0.08, "lid_angle": 0.0, "mirror_angle": True},
+    "remembering": {"scale_w": 1.04, "scale_h": 1.03, "top_lid": 0.02, "bottom_lid": 0.0, "lid_angle": 0.0, "mirror_angle": True},
+    "attentive": {"scale_w": 1.08, "scale_h": 1.06, "top_lid": 0.0, "bottom_lid": 0.0, "lid_angle": 0.0, "mirror_angle": True},
+    "engaged": {"scale_w": 1.02, "scale_h": 1.00, "top_lid": 0.04, "bottom_lid": 0.06, "lid_angle": 5.0, "mirror_angle": True},
+    "amused": {"scale_w": 1.00, "scale_h": 0.98, "top_lid": 0.0, "bottom_lid": 0.14, "lid_angle": 3.0, "mirror_angle": True},
+    "warm": {"scale_w": 1.06, "scale_h": 1.00, "top_lid": 0.0, "bottom_lid": 0.16, "lid_angle": 2.0, "mirror_angle": True},
+    "curious_intense": {"scale_w": 1.04, "scale_h": 1.05, "top_lid": 0.0, "bottom_lid": 0.06, "lid_angle": 8.0, "mirror_angle": False},
+    "nodding": {"scale_w": 1.00, "scale_h": 1.00, "top_lid": 0.0, "bottom_lid": 0.0, "lid_angle": 0.0, "mirror_angle": True},
+    "awkward": {"scale_w": 0.96, "scale_h": 0.93, "top_lid": 0.10, "bottom_lid": 0.10, "lid_angle": 0.0, "mirror_angle": True},
+    "uncertain": {"scale_w": 0.98, "scale_h": 0.96, "top_lid": 0.08, "bottom_lid": 0.04, "lid_angle": 0.0, "mirror_angle": True},
+    "apologetic": {"scale_w": 0.95, "scale_h": 0.92, "top_lid": 0.14, "bottom_lid": 0.04, "lid_angle": 6.0, "mirror_angle": True},
+    "proud": {"scale_w": 1.06, "scale_h": 1.02, "top_lid": 0.0, "bottom_lid": 0.0, "lid_angle": -2.0, "mirror_angle": True},
+    "playful": {"scale_w": 1.02, "scale_h": 1.00, "top_lid": 0.0, "bottom_lid": 0.06, "lid_angle": 0.0, "mirror_angle": False},
     "squint": {"scale_w": 1.0, "scale_h": 0.62, "top_lid": 0.42, "bottom_lid": 0.35, "lid_angle": 0.0, "mirror_angle": True},
 }
 
@@ -147,6 +164,20 @@ EMOTION_INTENSITY = {
     "suspicious": 0.56,
     "sleepy": 0.62,
     "bored": 0.58,
+    "thinking": 0.52,
+    "concentrating": 0.58,
+    "remembering": 0.50,
+    "attentive": 0.56,
+    "engaged": 0.54,
+    "amused": 0.50,
+    "warm": 0.52,
+    "curious_intense": 0.56,
+    "nodding": 0.45,
+    "awkward": 0.48,
+    "uncertain": 0.48,
+    "apologetic": 0.50,
+    "proud": 0.54,
+    "playful": 0.50,
     "squint": 0.85,
 }
 
@@ -242,6 +273,12 @@ class RoundEye:
         self.happy_burst_until = 0.0
         self.surprise_shock_until = 0.0
         self.look_entry_until = 0.0
+        self.release_bounce_active = False
+        self.release_bounce_start = 0.0
+        self.release_bounce_duration = 0.24
+        self.release_bounce_frequency = 3.2
+        self.release_bounce_decay = 14.0
+        self.release_bounce_strength = 0.028
 
         # Emotion transition blending state.
         self.transition_active = False
@@ -260,14 +297,41 @@ class RoundEye:
 
         self.noise_t = random.uniform(0, 100)
 
+    def _visible_half_extents(self, w: float, h: float, rotation_deg: float = None):
+        """Compute conservative half extents for the visible eye footprint.
+
+        Includes rotation and eyelid overdraw so clamping keeps all pixels on-screen.
+        """
+        if rotation_deg is None:
+            rotation_deg = self.current_rotation
+
+        w = max(6.0, float(w))
+        h = max(6.0, float(h))
+
+        theta = math.radians(rotation_deg)
+        cos_t = abs(math.cos(theta))
+        sin_t = abs(math.sin(theta))
+
+        # Axis-aligned bounding box of the rotated ellipse draw area.
+        rot_half_w = (w * cos_t + h * sin_t) * 0.5
+        rot_half_h = (w * sin_t + h * cos_t) * 0.5
+
+        # Eyelids can extend outside the ellipse during expressive states.
+        lid_extra_top = max(0.0, h * self.top_lid + 32.0)
+        lid_extra_bottom = max(0.0, h * self.bottom_lid + 13.0)
+
+        vis_half_w = max(8.0, rot_half_w + EYE_RENDER_PAD_X)
+        vis_half_h = max(8.0, rot_half_h + max(lid_extra_top, lid_extra_bottom) + EYE_RENDER_PAD_Y)
+        return vis_half_w, vis_half_h
+
     def _clamp_positions_in_bounds(self):
-        # Enforce both target and current center to remain inside the panel using live eye size.
-        half_w = max(8.0, self.current_w * EYE_MOVE_FOOTPRINT_X)
-        half_h = max(8.0, self.current_h * EYE_MOVE_FOOTPRINT_Y)
-        min_x = half_w + EYE_BOUND_MARGIN
-        max_x = SCREEN_WIDTH - half_w - EYE_BOUND_MARGIN
-        min_y = half_h + EYE_BOUND_MARGIN
-        max_y = SCREEN_HEIGHT - half_h - EYE_BOUND_MARGIN
+        # Enforce both target and current center to remain inside the panel using
+        # a conservative visible footprint (size + rotation + eyelid overdraw).
+        vis_half_w, vis_half_h = self._visible_half_extents(self.current_w, self.current_h)
+        min_x = vis_half_w + EYE_BOUND_MARGIN
+        max_x = SCREEN_WIDTH - vis_half_w - EYE_BOUND_MARGIN
+        min_y = vis_half_h + EYE_BOUND_MARGIN
+        max_y = SCREEN_HEIGHT - vis_half_h - EYE_BOUND_MARGIN
 
         if min_x > max_x:
             min_x = max_x = SCREEN_WIDTH * 0.5
@@ -278,6 +342,24 @@ class RoundEye:
         self.target_pos[1] = clamp(self.target_pos[1], min_y, max_y)
         self.current_pos[0] = clamp(self.current_pos[0], min_x, max_x)
         self.current_pos[1] = clamp(self.current_pos[1], min_y, max_y)
+
+    def _motion_clamp_bounds(self):
+        """Return a slightly looser clamp used only for motion targets."""
+        vis_half_w, vis_half_h = self._visible_half_extents(self.current_w, self.current_h)
+        motion_half_w = max(8.0, vis_half_w * EYE_MOTION_CLAMP_SCALE)
+        motion_half_h = max(8.0, vis_half_h * EYE_MOTION_CLAMP_SCALE)
+
+        min_x = motion_half_w + EYE_BOUND_MARGIN
+        max_x = SCREEN_WIDTH - motion_half_w - EYE_BOUND_MARGIN
+        min_y = motion_half_h + EYE_BOUND_MARGIN
+        max_y = SCREEN_HEIGHT - motion_half_h - EYE_BOUND_MARGIN
+
+        if min_x > max_x:
+            min_x = max_x = SCREEN_WIDTH * 0.5
+        if min_y > max_y:
+            min_y = max_y = SCREEN_HEIGHT * 0.5
+
+        return min_x, max_x, min_y, max_y
 
     def start_blink(self, speed_mult=None):
         if self.blink_state == "IDLE":
@@ -315,6 +397,11 @@ class RoundEye:
             self.happy_burst_until = now + 0.35
         if emotion_name == "surprised" and self.current_emotion != "surprised":
             self.surprise_shock_until = now + 0.18
+        if previous_emotion == "sleepy" and emotion_name == "surprised":
+            self.release_bounce_active = True
+            self.release_bounce_start = now
+        else:
+            self.release_bounce_active = False
         if emotion_name.startswith("looking_") and self.current_emotion != emotion_name:
             self.look_entry_until = now + 0.16
             # Trigger head jerk in the direction of the gaze
@@ -474,6 +561,15 @@ class RoundEye:
             self.top_lid += self.top_lid_vel
             self.bottom_lid += self.bottom_lid_vel
             self.lid_angle += self.lid_angle_vel
+
+            if self.release_bounce_active:
+                elapsed = now - self.release_bounce_start
+                if elapsed <= self.release_bounce_duration:
+                    bounce = math.exp(-self.release_bounce_decay * elapsed) * math.sin(math.tau * self.release_bounce_frequency * elapsed + math.pi / 2)
+                    self.top_lid = max(0.0, min(MAX_TOP_LID, self.top_lid - bounce * self.release_bounce_strength))
+                    self.current_pos[1] -= bounce * 0.35
+                else:
+                    self.release_bounce_active = False
             self.top_lid = max(0.0, min(MAX_TOP_LID, self.top_lid))
             self.bottom_lid = max(0.0, min(MAX_BOTTOM_LID, self.bottom_lid))
             self.lid_angle = max(-22.0, min(22.0, self.lid_angle))
@@ -576,9 +672,8 @@ class RoundEye:
         draw_h = max(6, min(int(self.h), SCREEN_HEIGHT - 4))
 
         # Render-time safety clamp: keep the visible eye footprint inside the panel.
-        # Extra pad accounts for eyelid strips and rotation expansion.
-        vis_half_w = max(8.0, draw_w * EYE_MOVE_FOOTPRINT_X + EYE_RENDER_PAD_X)
-        vis_half_h = max(8.0, draw_h * EYE_MOVE_FOOTPRINT_Y + EYE_RENDER_PAD_Y)
+        # Uses strict geometric extents so no rotated/lidded pixels leave the display.
+        vis_half_w, vis_half_h = self._visible_half_extents(draw_w, draw_h, self.current_rotation)
         min_cx = vis_half_w + EYE_BOUND_MARGIN
         max_cx = SCREEN_WIDTH - vis_half_w - EYE_BOUND_MARGIN
         min_cy = vis_half_h + EYE_BOUND_MARGIN
@@ -896,17 +991,9 @@ def servo_worker():
         time.sleep(SERVO_LOOP_DELAY)
 
 def clamp_eye_target(eye):
-    # Keep eye center inside the panel bounds even during shape changes.
-    half_w = max(8.0, eye.current_w * EYE_MOVE_FOOTPRINT_X)
-    half_h = max(8.0, eye.current_h * EYE_MOVE_FOOTPRINT_Y)
-    min_x = half_w + EYE_BOUND_MARGIN
-    max_x = SCREEN_WIDTH - half_w - EYE_BOUND_MARGIN
-    min_y = half_h + EYE_BOUND_MARGIN
-    max_y = SCREEN_HEIGHT - half_h - EYE_BOUND_MARGIN
-    if min_x > max_x:
-        min_x = max_x = SCREEN_WIDTH * 0.5
-    if min_y > max_y:
-        min_y = max_y = SCREEN_HEIGHT * 0.5
+    # Keep the motion target inside a slightly looser region so subtle drift still
+    # exists, while the final draw-time clamp prevents any pixel overflow.
+    min_x, max_x, min_y, max_y = eye._motion_clamp_bounds()
     eye.target_pos[0] = max(min_x, min(max_x, eye.target_pos[0]))
     eye.target_pos[1] = max(min_y, min(max_y, eye.target_pos[1]))
 
