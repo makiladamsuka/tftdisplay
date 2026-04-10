@@ -85,8 +85,8 @@ EYE_RENDER_PAD_Y = 6.0
 EYE_MOTION_CLAMP_SCALE = 0.82
 
 # Blink Speed (Higher = Faster)
-BLINK_SPEED_MIN = 2.4
-BLINK_SPEED_MAX = 3.2
+BLINK_SPEED_MIN = 3.2
+BLINK_SPEED_MAX = 4.2
 LOOK_SIDE_OFFSET = 16.0
 
 # Debug Mode - set to True to see emotion transitions
@@ -102,6 +102,9 @@ FAR_SQUINT_MAX_SEC = 0.55
 # If face detection drops temporarily, stay expressive and avoid early sleep.
 NO_FACE_SLEEPY_SEC = 120.0
 NO_FACE_BORED_SEC = 180.0
+NO_FACE_IDLE_BLEND_MIN_SEC = 2.0
+NO_FACE_IDLE_BLEND_MAX_SEC = 3.4
+NO_FACE_IDLE_BLEND_STAGES = 2
 EMOTION_MIN_HOLD_SEC = 0.70
 EMOTION_SWITCH_COOLDOWN_SEC = 0.35
 EXCITED_BURST_SEC = 0.65
@@ -115,6 +118,32 @@ JERK_COOLDOWN_SEC = 0.60
 SOCIAL_MODE_MIN_SEC = 0.70
 SOCIAL_MODE_MAX_SEC = 2.00
 HAPPY_MIN_GAP_SEC = 2.80
+
+# Natural gaze aversion timing and amplitudes.
+GAZE_LOCK_AFTER_FACE_SEC = 3.0
+GAZE_MIN_GAP_MIN_SEC = 4.0
+GAZE_MIN_GAP_MAX_SEC = 6.0
+GAZE_AMBIENT_SCAN_MIN_SEC = 8.0
+GAZE_AMBIENT_SCAN_MAX_SEC = 15.0
+NO_FACE_SEARCH_MIN_SCANS = 3
+NO_FACE_SCAN_TRIGGER_CHANCE = 0.55
+NO_FACE_SCAN_RETRY_MIN_SEC = 3.0
+NO_FACE_SCAN_RETRY_MAX_SEC = 7.0
+NO_FACE_SCAN_SERVO_PAN_DEG = 30.0
+GAZE_SOCIAL_RELEASE_MIN_SEC = 20.0
+GAZE_SOCIAL_RELEASE_MAX_SEC = 30.0
+
+GAZE_BRIEF_X = 12.0
+GAZE_BRIEF_Y = 7.0
+GAZE_THINK_X = 18.0
+GAZE_THINK_Y = 12.0
+GAZE_SCAN_X = 24.0
+GAZE_SCAN_Y = 8.0
+GAZE_RELEASE_X = 18.0
+GAZE_RELEASE_Y = 6.0
+
+GAZE_SERVO_PAN_PER_PX = 0.14
+GAZE_SERVO_TILT_PER_PX = 0.12
 
 # --- Emotion Presets ---
 EMOTION_PRESETS = {
@@ -213,6 +242,7 @@ PAN_TRACK_RANGE = 26.0
 TILT_TRACK_RANGE = 18.0
 TARGET_FILTER_ALPHA = 0.30
 NO_FACE_RECENTER_SEC = 1.5
+NO_FACE_RECENTER_ALPHA = 0.06
 
 # Head Jerk Animation (for looking_left/looking_right emotions)
 JERK_AMPLITUDE = 9.0  # Degrees to jerk left/right
@@ -368,19 +398,22 @@ class RoundEye:
                 self.blink_speed_mult = speed_mult
             else:
                 self.blink_speed_mult = random.uniform(BLINK_SPEED_MIN, BLINK_SPEED_MAX)
-            self.vy = 40 * self.blink_speed_mult
+            self.vy = 48 * self.blink_speed_mult
 
     def _ease_in_out(self, alpha: float) -> float:
         alpha = max(0.0, min(1.0, alpha))
         return alpha * alpha * (3.0 - 2.0 * alpha)
 
     def _transition_duration_for(self, previous_emotion: str, next_emotion: str) -> float:
+        no_face_blends = {"uncertain", "curious", "warm", "attentive", "idle"}
         if previous_emotion == next_emotion:
             return 0.12
         if next_emotion in ("excited", "surprised"):
             return 0.13
         if previous_emotion.startswith("looking_") and next_emotion.startswith("looking_"):
             return 0.14
+        if previous_emotion in no_face_blends or next_emotion in no_face_blends:
+            return 0.42
         if next_emotion in ("sleepy", "bored"):
             return 0.30
         return 0.22
@@ -578,10 +611,10 @@ class RoundEye:
             self.target_h = (self.base_h * self.scale_h) + breath_h - (move_stretch_y * 0.2)
 
         elif self.blink_state == "DROPPING":
-            self.vy += 10 * self.blink_speed_mult
+            self.vy += 12 * self.blink_speed_mult
             self.current_pos[1] += self.vy
-            self.current_w = self.base_w - 10
-            self.current_h = self.base_h + 20
+            self.current_w = self.base_w - 12
+            self.current_h = self.base_h + 18
             self.target_w = self.current_w
             self.target_h = self.current_h
 
@@ -591,8 +624,8 @@ class RoundEye:
                 self.velocity = [0.0, 0.0]
 
         elif self.blink_state == "SQUASHING":
-            squeeze_speed = 45 * self.blink_speed_mult
-            spread_speed = 30 * self.blink_speed_mult
+            squeeze_speed = 58 * self.blink_speed_mult
+            spread_speed = 38 * self.blink_speed_mult
             self.current_h -= squeeze_speed
             self.current_w += spread_speed
             self.current_pos[1] = FLOOR_Y - self.current_h // 2
@@ -602,15 +635,15 @@ class RoundEye:
                 self.blink_state = "JUMPING"
 
         elif self.blink_state == "JUMPING":
-            recovery_speed = max(0.1, min(0.9, 0.7 * self.blink_speed_mult))
+            recovery_speed = max(0.15, min(0.95, 0.82 * self.blink_speed_mult))
             self.current_h += (self.base_h - self.current_h) * recovery_speed
             self.current_w += (self.base_w - self.current_w) * recovery_speed
 
-            self.vel_x = (self.vel_x + (self.target_pos[0] - self.current_pos[0]) * 0.1) * 0.8
+            self.vel_x = (self.vel_x + (self.target_pos[0] - self.current_pos[0]) * 0.12) * 0.82
             self.current_pos[0] += self.vel_x
 
             target_y = self.target_pos[1]
-            self.current_pos[1] += (target_y - self.current_pos[1]) * 0.8
+            self.current_pos[1] += (target_y - self.current_pos[1]) * 0.88
 
             if abs(self.current_h - self.base_h) < 5 and abs(self.current_pos[1] - target_y) < 5:
                 self.current_h = self.base_h
@@ -894,6 +927,10 @@ social_mode = "neutral"
 social_mode_until = time.time()
 last_happy_ts = 0.0
 no_face_since_ts = time.time()
+no_face_scan_checks = 0
+no_face_blend_emotion = "idle"
+no_face_blend_until = 0.0
+no_face_blend_queue = []
 
 target_lock = threading.Lock()
 target_x_off = 0.0
@@ -921,6 +958,30 @@ jerk_until = 0.0      # Timestamp when jerk ends
 jerk_direction = 0.0  # -1 for left, +1 for right, 0 for no jerk
 jerk_cooldown_until = 0.0
 
+# Gaze aversion manager state
+gaze_state = "ENGAGED"
+gaze_event_active = False
+gaze_event_start = 0.0
+gaze_event_to_sec = 0.0
+gaze_event_hold_sec = 0.0
+gaze_event_back_sec = 0.0
+gaze_event_pause_sec = 0.0
+gaze_event_target_x = 0.0
+gaze_event_target_y = 0.0
+gaze_override_x = 0.0
+gaze_override_y = 0.0
+scan_emotion_override = None
+no_face_scan_completed_pulse = False
+gaze_reengage_until = 0.0
+gaze_next_allowed_ts = time.time()
+gaze_next_scan_ts = time.time() + random.uniform(GAZE_AMBIENT_SCAN_MIN_SEC, GAZE_AMBIENT_SCAN_MAX_SEC)
+gaze_next_release_ts = time.time() + random.uniform(GAZE_SOCIAL_RELEASE_MIN_SEC, GAZE_SOCIAL_RELEASE_MAX_SEC)
+face_present_since_ts = None
+
+# Servo aversion offsets (added on top of face tracking servo targets)
+servo_aversion_pan_offset = 0.0
+servo_aversion_tilt_offset = 0.0
+
 
 def clamp(value, lo, hi):
     return max(lo, min(hi, value))
@@ -941,6 +1002,84 @@ def weighted_pick(weighted_items):
     return weighted_items[-1][0]
 
 
+def _smoothstep01(alpha: float) -> float:
+    alpha = max(0.0, min(1.0, alpha))
+    return alpha * alpha * (3.0 - 2.0 * alpha)
+
+
+def start_gaze_event(kind: str, x: float, y: float, to_sec: float, hold_sec: float, back_sec: float):
+    global gaze_state, gaze_event_active, gaze_event_start, gaze_event_to_sec
+    global gaze_event_hold_sec, gaze_event_back_sec, gaze_event_target_x, gaze_event_target_y
+    global scan_emotion_override
+
+    gaze_state = kind
+    gaze_event_active = True
+    gaze_event_start = time.time()
+    gaze_event_to_sec = max(0.01, to_sec)
+    gaze_event_hold_sec = max(0.0, hold_sec)
+    gaze_event_back_sec = max(0.01, back_sec)
+    gaze_event_target_x = float(x)
+    gaze_event_target_y = float(y)
+    if kind == "AVERT_SCAN":
+        scan_emotion_override = "looking_right_natural" if gaze_event_target_x >= 0 else "looking_left_natural"
+    else:
+        scan_emotion_override = None
+
+
+def update_gaze_manager(now: float):
+    global gaze_state, gaze_event_active, gaze_override_x, gaze_override_y, gaze_reengage_until
+    global servo_aversion_pan_offset, servo_aversion_tilt_offset, scan_emotion_override
+    global no_face_scan_completed_pulse
+
+    if not gaze_event_active:
+        gaze_override_x = 0.0
+        gaze_override_y = 0.0
+        scan_emotion_override = None
+        no_face_scan_completed_pulse = False
+        with servo_state_lock:
+            servo_aversion_pan_offset = 0.0
+            servo_aversion_tilt_offset = 0.0
+        return
+
+    elapsed = now - gaze_event_start
+    t1 = gaze_event_to_sec
+    t2 = t1 + gaze_event_hold_sec
+    t3 = t2 + gaze_event_back_sec
+
+    if elapsed <= t1:
+        a = _smoothstep01(elapsed / max(0.001, t1))
+        gaze_override_x = gaze_event_target_x * a
+        gaze_override_y = gaze_event_target_y * a
+    elif elapsed <= t2:
+        gaze_override_x = gaze_event_target_x
+        gaze_override_y = gaze_event_target_y
+    elif elapsed <= t3:
+        a = _smoothstep01((elapsed - t2) / max(0.001, gaze_event_back_sec))
+        gaze_override_x = gaze_event_target_x * (1.0 - a)
+        gaze_override_y = gaze_event_target_y * (1.0 - a)
+    else:
+        finished_kind = gaze_state
+        gaze_event_active = False
+        gaze_state = "ENGAGED"
+        gaze_override_x = 0.0
+        gaze_override_y = 0.0
+        scan_emotion_override = None
+        no_face_scan_completed_pulse = finished_kind == "AVERT_SCAN"
+        gaze_reengage_until = now + 0.28
+
+    with servo_state_lock:
+        if gaze_state == "AVERT_SCAN":
+            # Map scan progress to a deliberate +/-30 deg pan sweep for natural searching.
+            denom = max(1e-3, abs(gaze_event_target_x))
+            scan_progress = gaze_override_x / denom
+            scan_progress = clamp(scan_progress, -1.0, 1.0)
+            servo_aversion_pan_offset = scan_progress * NO_FACE_SCAN_SERVO_PAN_DEG
+            servo_aversion_tilt_offset = gaze_override_y * GAZE_SERVO_TILT_PER_PX
+        else:
+            servo_aversion_pan_offset = gaze_override_x * GAZE_SERVO_PAN_PER_PX
+            servo_aversion_tilt_offset = gaze_override_y * GAZE_SERVO_TILT_PER_PX
+
+
 def servo_worker():
     global servo_current_pan, servo_current_tilt, servo_running, jerk_until, jerk_direction
     if servo_kit is None:
@@ -952,6 +1091,8 @@ def servo_worker():
             tilt_target = servo_target_tilt
             pan_current = servo_current_pan
             tilt_current = servo_current_tilt
+            pan_avert = servo_aversion_pan_offset
+            tilt_avert = servo_aversion_tilt_offset
 
         # Apply jerk oscillation if active
         now = time.time()
@@ -964,8 +1105,8 @@ def servo_worker():
             # Sine wave oscillation: quick outward jerk, return, small reverse jerk
             jerk_offset = jerk_direction * JERK_AMPLITUDE * math.sin(phase * math.pi * 2.0)
 
-        pan_error = (pan_target + jerk_offset) - pan_current
-        tilt_error = tilt_target - tilt_current
+        pan_error = (pan_target + jerk_offset + pan_avert) - pan_current
+        tilt_error = (tilt_target + tilt_avert) - tilt_current
 
         if abs(pan_error) < SERVO_DEADZONE_DEG:
             pan_error = 0.0
@@ -1154,9 +1295,12 @@ def vision_worker():
 
                     if ENABLE_SERVO and servo_kit is not None:
                         if time.time() - last_face_seen_ts > NO_FACE_RECENTER_SEC:
+                            pan_center = (PAN_MIN + PAN_MAX) * 0.5
+                            tilt_center = (TILT_MIN + TILT_MAX) * 0.5
                             with servo_state_lock:
-                                servo_target_pan = (PAN_MIN + PAN_MAX) * 0.5
-                                servo_target_tilt = (TILT_MIN + TILT_MAX) * 0.5
+                                # Smoothly glide target back to neutral when face is lost.
+                                servo_target_pan = servo_target_pan + (pan_center - servo_target_pan) * NO_FACE_RECENTER_ALPHA
+                                servo_target_tilt = servo_target_tilt + (tilt_center - servo_target_tilt) * NO_FACE_RECENTER_ALPHA
 
                 with target_lock:
                     target_x_off = local_x
@@ -1210,6 +1354,7 @@ vision_thread.start()
 try:
     while running:
         loop_start = time.perf_counter()
+        now = time.time()
 
         with target_lock:
             local_target_x = target_x_off
@@ -1226,7 +1371,7 @@ try:
         smoothed_y_off = smoothed_y_off + (local_target_y - smoothed_y_off) * smooth_alpha
         smoothed_rotation = smoothed_rotation + (local_target_rot - smoothed_rotation) * smooth_alpha
         
-        # 2. Update Eye Targets
+        # 2. Update Eye Targets (gaze overrides are layered later)
         left_eye.target_pos[0] = left_eye.base_x + smoothed_x_off
         left_eye.target_pos[1] = left_eye.base_y + smoothed_y_off
         clamp_eye_target(left_eye)
@@ -1238,8 +1383,38 @@ try:
         right_eye.target_rotation = 0.0
 
         # Natural emotion routing with timing gates and hysteresis.
-        now = time.time()
         face_entered = local_face_present and not router_face_present_prev
+        face_lost = (not local_face_present) and router_face_present_prev
+
+        if face_entered:
+            face_present_since_ts = now
+            gaze_next_release_ts = now + random.uniform(GAZE_SOCIAL_RELEASE_MIN_SEC, GAZE_SOCIAL_RELEASE_MAX_SEC)
+            no_face_blend_until = 0.0
+            no_face_blend_queue = []
+        elif not local_face_present:
+            face_present_since_ts = None
+
+        if face_lost:
+            first_blend = weighted_pick([
+                ("uncertain", 0.35),
+                ("curious", 0.25),
+                ("warm", 0.20),
+                ("attentive", 0.20),
+            ])
+            second_options = [e for e in ("uncertain", "curious", "warm", "attentive") if e != first_blend]
+            no_face_blend_queue = [first_blend]
+            if NO_FACE_IDLE_BLEND_STAGES >= 2 and second_options:
+                no_face_blend_queue.append(random.choice(second_options))
+            no_face_blend_emotion = no_face_blend_queue[0]
+            no_face_blend_until = now + random.uniform(NO_FACE_IDLE_BLEND_MIN_SEC, NO_FACE_IDLE_BLEND_MAX_SEC)
+
+        if (not local_face_present) and no_face_blend_queue and now >= no_face_blend_until:
+            no_face_blend_queue.pop(0)
+            if no_face_blend_queue:
+                no_face_blend_emotion = no_face_blend_queue[0]
+                no_face_blend_until = now + random.uniform(NO_FACE_IDLE_BLEND_MIN_SEC, NO_FACE_IDLE_BLEND_MAX_SEC)
+            else:
+                no_face_blend_until = 0.0
 
         # Debounce multi-face state to avoid flicker from detector instability.
         multi_face_raw = local_face_count >= 2
@@ -1279,6 +1454,7 @@ try:
 
         if local_face_present:
             no_face_since_ts = now
+            no_face_scan_checks = 0
             if (not router_face_close) and (local_face_area_ratio >= CLOSE_FACE_ENTER_RATIO):
                 router_face_close = True
             elif router_face_close and (local_face_area_ratio < CLOSE_FACE_EXIT_RATIO):
@@ -1328,7 +1504,7 @@ try:
                 elif social_mode == "curious":
                     target_emotion_raw = "looking_right_natural" if side_right else "looking_left_natural"
                 else:
-                    target_emotion_raw = "suspicious"
+                    target_emotion_raw = "engaged"
             elif router_face_close:
                 if social_mode == "warm":
                     if side_look_active:
@@ -1339,7 +1515,7 @@ try:
                     if side_look_active:
                         target_emotion_raw = "looking_right_natural" if side_right else "looking_left_natural"
                     else:
-                        target_emotion_raw = "suspicious"
+                        target_emotion_raw = "curious_intense"
                 else:
                     target_emotion_raw = "idle"
             elif should_squint:
@@ -1348,9 +1524,13 @@ try:
                 target_emotion_raw = "looking_right_natural" if side_right else "looking_left_natural"
         else:
             no_face_elapsed = now - no_face_since_ts
-            if no_face_elapsed >= NO_FACE_BORED_SEC:
-                target_emotion_raw = "bored"
-            elif no_face_elapsed >= NO_FACE_SLEEPY_SEC:
+            if gaze_event_active and gaze_state == "AVERT_SCAN" and scan_emotion_override:
+                target_emotion_raw = scan_emotion_override
+            elif no_face_blend_queue and now < no_face_blend_until:
+                target_emotion_raw = no_face_blend_emotion
+            elif no_face_elapsed >= NO_FACE_BORED_SEC:
+                target_emotion_raw = "warm"
+            elif no_face_elapsed >= NO_FACE_SLEEPY_SEC and no_face_scan_checks >= NO_FACE_SEARCH_MIN_SCANS:
                 target_emotion_raw = "sleepy"
             else:
                 target_emotion_raw = "idle"
@@ -1363,7 +1543,7 @@ try:
             if side_look_active:
                 target_emotion_raw = "looking_right_natural" if side_right else "looking_left_natural"
             else:
-                target_emotion_raw = "suspicious"
+                target_emotion_raw = "warm"
 
         # Debounce route output so brief detector spikes do not force emotion flips.
         if target_emotion_raw != router_candidate_emotion:
@@ -1391,7 +1571,12 @@ try:
                 state_info += f" burst_rem={burst_remaining:.2f}s"
             else:
                 no_face_elapsed = now - no_face_since_ts
-                state_info += f" no_face_elapsed={no_face_elapsed:.2f}s"
+                scan_eta = max(0.0, gaze_next_scan_ts - now)
+                state_info += (
+                    f" no_face_elapsed={no_face_elapsed:.2f}s"
+                    f" scan_checks={no_face_scan_checks}/{NO_FACE_SEARCH_MIN_SCANS}"
+                    f" scan_eta={scan_eta:.2f}s"
+                )
             print(state_info)
 
         if target_emotion != current_emotion:
@@ -1426,15 +1611,98 @@ try:
                     else:
                         no_face_elapsed = now - no_face_since_ts
                         if no_face_elapsed >= NO_FACE_BORED_SEC:
-                            reason = f"NO_FACE_{NO_FACE_BORED_SEC}s_ELAPSED (bored)"
-                        elif no_face_elapsed >= NO_FACE_SLEEPY_SEC:
+                            reason = f"NO_FACE_{NO_FACE_BORED_SEC}s_ELAPSED (warm)"
+                        elif no_face_elapsed >= NO_FACE_SLEEPY_SEC and no_face_scan_checks >= NO_FACE_SEARCH_MIN_SCANS:
                             reason = f"NO_FACE_{NO_FACE_SLEEPY_SEC}s_ELAPSED (sleepy)"
+                        elif gaze_event_active and gaze_state == "AVERT_SCAN":
+                            reason = "NO_FACE_SEARCHING (active scan)"
+                        elif no_face_blend_queue and now < no_face_blend_until:
+                            stage_idx = max(1, NO_FACE_IDLE_BLEND_STAGES - len(no_face_blend_queue) + 1)
+                            reason = f"NO_FACE_BLEND_STAGE_{stage_idx} ({no_face_blend_emotion})"
                         else:
-                            reason = "NO_FACE_BRIEF (idle)"
+                            reason = f"NO_FACE_IDLE_WAITING (scans {no_face_scan_checks}/{NO_FACE_SEARCH_MIN_SCANS})"
                     print(f"  ✓ EMOTION_CHANGE: {current_emotion:8} | {reason}")
+                    if current_emotion.startswith("looking_left"):
+                        print(
+                            f"  ↺ LOOK_DIR: LEFT  state={gaze_state} x_off={effective_x_off:.2f} y_off={effective_y_off:.2f}"
+                        )
+                    elif current_emotion.startswith("looking_right"):
+                        print(
+                            f"  ↻ LOOK_DIR: RIGHT state={gaze_state} x_off={effective_x_off:.2f} y_off={effective_y_off:.2f}"
+                        )
 
         router_face_present_prev = local_face_present
         router_multi_face_prev = multi_face_stable
+
+        # Gaze aversion manager: additive offsets on top of normal face tracking.
+        update_gaze_manager(now)
+        if no_face_scan_completed_pulse:
+            if not local_face_present:
+                no_face_scan_checks = min(NO_FACE_SEARCH_MIN_SCANS, no_face_scan_checks + 1)
+            no_face_scan_completed_pulse = False
+        can_avert = (not gaze_event_active) and (now >= gaze_next_allowed_ts)
+        if can_avert:
+            if local_face_present and face_present_since_ts is not None:
+                face_age = now - face_present_since_ts
+                if face_age >= GAZE_LOCK_AFTER_FACE_SEC:
+                    if current_emotion in ("thinking", "concentrating", "remembering"):
+                        sx = random.choice([-1.0, 1.0])
+                        start_gaze_event(
+                            "AVERT_THINK",
+                            sx * random.uniform(GAZE_THINK_X * 0.8, GAZE_THINK_X),
+                            -random.uniform(GAZE_THINK_Y * 0.7, GAZE_THINK_Y),
+                            to_sec=0.22,
+                            hold_sec=random.uniform(0.8, 2.0),
+                            back_sec=0.20,
+                        )
+                        gaze_next_allowed_ts = now + random.uniform(GAZE_MIN_GAP_MIN_SEC, GAZE_MIN_GAP_MAX_SEC)
+                    elif now >= gaze_next_release_ts:
+                        sx = random.choice([-1.0, 1.0])
+                        start_gaze_event(
+                            "AVERT_RELEASE",
+                            sx * random.uniform(GAZE_RELEASE_X * 0.85, GAZE_RELEASE_X),
+                            random.uniform(-GAZE_RELEASE_Y * 0.5, GAZE_RELEASE_Y),
+                            to_sec=0.34,
+                            hold_sec=random.uniform(1.5, 3.0),
+                            back_sec=0.34,
+                        )
+                        gaze_next_allowed_ts = now + random.uniform(GAZE_MIN_GAP_MIN_SEC, GAZE_MIN_GAP_MAX_SEC)
+                        gaze_next_release_ts = now + random.uniform(GAZE_SOCIAL_RELEASE_MIN_SEC, GAZE_SOCIAL_RELEASE_MAX_SEC)
+                    elif random.random() < 0.015:
+                        sx = random.choice([-1.0, 1.0])
+                        start_gaze_event(
+                            "AVERT_BRIEF",
+                            sx * random.uniform(GAZE_BRIEF_X * 0.8, GAZE_BRIEF_X),
+                            random.uniform(-GAZE_BRIEF_Y, GAZE_BRIEF_Y),
+                            to_sec=0.14,
+                            hold_sec=random.uniform(0.3, 0.8),
+                            back_sec=0.16,
+                        )
+                        gaze_next_allowed_ts = now + random.uniform(GAZE_MIN_GAP_MIN_SEC, GAZE_MIN_GAP_MAX_SEC)
+            elif (not local_face_present) and now >= gaze_next_scan_ts:
+                if random.random() < NO_FACE_SCAN_TRIGGER_CHANCE:
+                    sx = random.choice([-1.0, 1.0])
+                    start_gaze_event(
+                        "AVERT_SCAN",
+                        sx * random.uniform(GAZE_SCAN_X * 0.8, GAZE_SCAN_X),
+                        random.uniform(-GAZE_SCAN_Y, GAZE_SCAN_Y),
+                        to_sec=1.20,
+                        hold_sec=random.uniform(1.8, 3.6),
+                        back_sec=1.20,
+                    )
+                    gaze_next_allowed_ts = now + random.uniform(GAZE_MIN_GAP_MIN_SEC, GAZE_MIN_GAP_MAX_SEC)
+                    gaze_next_scan_ts = now + random.uniform(GAZE_AMBIENT_SCAN_MIN_SEC, GAZE_AMBIENT_SCAN_MAX_SEC)
+                else:
+                    # Keep scanning occasional by skipping some opportunities.
+                    gaze_next_scan_ts = now + random.uniform(NO_FACE_SCAN_RETRY_MIN_SEC, NO_FACE_SCAN_RETRY_MAX_SEC)
+
+        effective_x_off = smoothed_x_off + gaze_override_x
+        effective_y_off = smoothed_y_off + gaze_override_y
+        left_eye.target_pos[0] = left_eye.base_x + effective_x_off
+        left_eye.target_pos[1] = left_eye.base_y + effective_y_off
+        clamp_eye_target(left_eye)
+        right_eye.target_pos[0] = left_eye.target_pos[0]
+        right_eye.target_pos[1] = left_eye.target_pos[1]
         
         # 3. Blink Logic
         if time.time() > next_blink_time:
@@ -1447,7 +1715,16 @@ try:
         
         # 5. Physics Update
         # Drive one master eye and mirror full state every frame for strict sync.
+        reengage_bump = 0.0
+        if now < gaze_reengage_until:
+            phase = (gaze_reengage_until - now) / 0.28
+            reengage_bump = max(0.0, min(1.0, phase)) * 0.035
+            left_eye.target_scale_w += reengage_bump
+            left_eye.target_scale_h += reengage_bump * 0.70
         left_eye.update()
+        if reengage_bump > 0.0:
+            left_eye.target_scale_w -= reengage_bump
+            left_eye.target_scale_h -= reengage_bump * 0.70
         mirror_full_state(left_eye, right_eye)
         
         # 6. Draw
